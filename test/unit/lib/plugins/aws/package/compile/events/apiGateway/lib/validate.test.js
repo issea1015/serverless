@@ -6,6 +6,7 @@ const AwsCompileApigEvents = require('../../../../../../../../../../lib/plugins/
 const Serverless = require('../../../../../../../../../../lib/Serverless');
 const AwsProvider = require('../../../../../../../../../../lib/plugins/aws/provider');
 const ServerlessError = require('../../../../../../../../../../lib/serverless-error');
+const runServerless = require('../../../../../../../utils/run-serverless');
 
 describe('#validate()', () => {
   let serverless;
@@ -427,20 +428,39 @@ describe('#validate()', () => {
       allowCredentials: false,
     };
 
-    awsCompileApigEvents.serverless.service.functions = {
-      first: {
-        events: [
-          {
-            http: {
-              method: 'POST',
-              path: '/foo/bar',
-              cors: true,
-            },
+    const { serverless } = await runServerless({
+      fixture: 'function',
+      command: 'package',
+      lastLifecycleHookName: 'before:package:compileEvents',
+      configExt: {
+        functions: {
+          first: {
+            events: [
+              {
+                http: {
+                  method: 'POST',
+                  path: '/foo/bar',
+                  cors: true,
+                },
+              },
+            ],
           },
-        ],
+          second: {
+            events: [
+              {
+                http: {
+                  method: 'POST',
+                  path: '/foo/bar',
+                  cors: {},
+                },
+              },
+            ],
+          },
+        },
       },
-    };
+    })
 
+    awsCompileApigEvents = new AwsCompileApigEvents(serverless, options);
     const validated = awsCompileApigEvents.validate();
     expect(validated.events).to.be.an('Array').with.length(1);
     expect(validated.events[0].http.cors).to.deep.equal(expectedCors);
